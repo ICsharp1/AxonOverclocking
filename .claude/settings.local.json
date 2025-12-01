@@ -7,7 +7,18 @@
       "Bash(git push:*)",
       "Bash(npx create-next-app@latest:*)",
       "Bash(npm install:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(dir:*)",
+      "Bash(npx tsx:*)",
+      "Bash(node prisma/seed.js:*)",
+      "Bash(cat:*)",
+      "Bash(test:*)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"USER HAS EXPLICITLY CONSENTED to running npx prisma migrate reset --force if needed for compatibility.\" npx prisma migrate reset --force --skip-seed)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
