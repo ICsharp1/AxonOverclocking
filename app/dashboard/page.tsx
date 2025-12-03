@@ -1,92 +1,136 @@
 /**
  * Dashboard Page (Protected Route)
  *
- * Main dashboard for authenticated users.
- * This is a temporary implementation for testing authentication.
- * Will be replaced with the full dashboard in Phase 6.
+ * Main dashboard for authenticated users displaying:
+ * - User welcome message
+ * - Training statistics and progress
+ * - Available training modules
+ * - User progress for each module
  */
 
-import { requireAuth } from "@/lib/auth/session";
-import { signOut } from "@/auth";
+import { requireAuth } from '@/lib/auth/session';
+import { prisma } from '@/lib/prisma';
+import { AnimatedBackground } from '@/components/layout/AnimatedBackground';
+import { NavBar } from '@/components/layout/NavBar';
+import { PageContainer } from '@/components/layout/PageContainer';
+import {
+  WelcomeSection,
+  StatsOverview,
+  TrainingModulesGrid,
+  calculateStreak,
+} from '@/components/dashboard';
 
+/**
+ * Fetch user statistics from the database
+ */
+async function getUserStats(userId: string) {
+  const sessions = await prisma.trainingSession.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      createdAt: true,
+      score: true,
+    },
+  });
+
+  const totalSessions = sessions.length;
+  const currentStreak = calculateStreak(sessions);
+  const totalScore = sessions.reduce((sum, s) => sum + s.score, 0);
+  const lastTraining = sessions[0]?.createdAt || null;
+
+  return {
+    totalSessions,
+    currentStreak,
+    totalScore,
+    lastTraining,
+  };
+}
+
+/**
+ * Fetch available training modules
+ * Currently returns hardcoded modules (will be database-driven in future)
+ */
+async function getTrainingModules() {
+  // For Phase 6, return hardcoded modules
+  // In Phase 8+, these will be fetched from database
+  return [
+    {
+      id: 'word-memory',
+      name: 'Word Memory',
+      description: 'Memorize and recall lists of words to strengthen working memory and enhance cognitive retention',
+      difficulty: 'medium' as const,
+      estimatedTime: 5,
+    },
+    // Additional modules will be added in Phase 8
+  ];
+}
+
+/**
+ * Fetch user progress for all training modules
+ */
+async function getUserProgress(userId: string) {
+  const progress = await prisma.userProgress.findMany({
+    where: { userId },
+    include: {
+      trainingModule: true,
+    },
+  });
+
+  return progress.map((p) => ({
+    moduleId: p.trainingModuleId,
+    bestScore: p.bestScore,
+    totalSessions: p.totalSessions,
+    averageScore: p.averageScore,
+    lastPlayed: p.lastSessionAt,
+  }));
+}
+
+/**
+ * Dashboard Page Component
+ */
 export default async function DashboardPage() {
   // Require authentication - will redirect to login if not authenticated
   const session = await requireAuth();
 
+  // Fetch all dashboard data
+  const [userStats, trainingModules, userProgress] = await Promise.all([
+    getUserStats(session.user.id),
+    getTrainingModules(),
+    getUserProgress(session.user.id),
+  ]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
-                Welcome, {session.user.username}!
-              </h1>
-              <p className="text-white/80">
-                You are successfully logged in to Axon Overclocking.
-              </p>
-            </div>
+    <>
+      {/* Animated Background */}
+      <AnimatedBackground />
 
-            {/* Sign Out Button */}
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: "/" });
-              }}
-            >
-              <button
-                type="submit"
-                className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-lg transition-colors duration-200 border border-white/30"
-              >
-                Sign Out
-              </button>
-            </form>
-          </div>
-        </div>
+      {/* Navigation Bar */}
+      <NavBar
+        user={{
+          name: session.user.name || session.user.username,
+          username: session.user.username,
+        }}
+      />
 
-        {/* User Info Card */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
-          <h2 className="text-2xl font-bold text-white mb-4">
-            Your Profile
-          </h2>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-white/10">
-              <span className="text-white/70">User ID:</span>
-              <span className="text-white font-mono text-sm">
-                {session.user.id}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-white/10">
-              <span className="text-white/70">Username:</span>
-              <span className="text-white font-semibold">
-                {session.user.username}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-white/10">
-              <span className="text-white/70">Email:</span>
-              <span className="text-white">{session.user.email}</span>
-            </div>
-            {session.user.name && (
-              <div className="flex justify-between items-center py-2 border-b border-white/10">
-                <span className="text-white/70">Name:</span>
-                <span className="text-white">{session.user.name}</span>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Main Dashboard Content */}
+      <PageContainer maxWidth="2xl">
+        {/* Welcome Section */}
+        <WelcomeSection
+          user={{
+            name: session.user.name || session.user.username,
+            username: session.user.username,
+          }}
+        />
 
-        {/* Coming Soon Notice */}
-        <div className="mt-6 bg-purple-500/20 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-purple-400/30">
-          <p className="text-white/90 text-center">
-            <span className="font-semibold">Dashboard features coming soon!</span>
-            <br />
-            <span className="text-sm text-white/70">
-              Training modules, progress tracking, and more will be available in Phase 6.
-            </span>
-          </p>
-        </div>
-      </div>
-    </div>
+        {/* Stats Overview */}
+        <StatsOverview stats={userStats} />
+
+        {/* Training Modules Grid */}
+        <TrainingModulesGrid
+          modules={trainingModules}
+          userProgress={userProgress}
+        />
+      </PageContainer>
+    </>
   );
 }
