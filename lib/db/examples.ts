@@ -91,7 +91,7 @@ export async function getActiveTrainingModules() {
   });
 
   // Type-safe casting for JSON configuration
-  return modules as TypedTrainingModule<WordMemoryConfig>[];
+  return modules as unknown as TypedTrainingModule<WordMemoryConfig>[];
 }
 
 /**
@@ -105,7 +105,7 @@ export async function getTrainingModuleBySlug(slug: string) {
   if (!module) return null;
 
   // Cast to specific training type for type safety
-  return module as TypedTrainingModule<WordMemoryConfig>;
+  return module as unknown as TypedTrainingModule<WordMemoryConfig>;
 }
 
 /**
@@ -174,7 +174,7 @@ export async function getUserRecentSessions(
     take: limit,
   });
 
-  return sessions as TypedTrainingSession<SessionConfiguration, WordMemoryResults>[];
+  return sessions as unknown as TypedTrainingSession<SessionConfiguration, WordMemoryResults>[];
 }
 
 /**

@@ -21,11 +21,12 @@
 
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import type { Session } from "next-auth";
 
 /**
  * Extended session type that includes user ID
  */
-export type AuthSession = Awaited<ReturnType<typeof auth>>;
+export type AuthSession = Session | null;
 
 /**
  * User type from session

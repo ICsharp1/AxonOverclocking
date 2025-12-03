@@ -16,7 +16,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any, // Type assertion for adapter compatibility
 
   // Use JWT strategy instead of database sessions for better performance
   session: {
@@ -91,7 +91,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user, account }) {
       // On sign-in, add user ID to token
       if (user) {
-        token.id = user.id;
+        token.id = user.id as string;
         token.username = (user as any).username;
       }
 
@@ -100,7 +100,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // The adapter handles account linking automatically
         // Just ensure the user ID is in the token
         if (user) {
-          token.id = user.id;
+          token.id = user.id as string;
         }
       }
 

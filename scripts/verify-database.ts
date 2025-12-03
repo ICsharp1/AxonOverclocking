@@ -77,7 +77,7 @@ async function verifyDatabase() {
     // ========================================================================
     console.log('3. Testing JSON configuration type safety...');
 
-    const typedModule = wordMemory as TypedTrainingModule<WordMemoryConfig>;
+    const typedModule = wordMemory as unknown as TypedTrainingModule<WordMemoryConfig>;
 
     if (!isWordMemoryConfig(typedModule.configuration)) {
       throw new Error('Word Memory configuration has invalid structure');
