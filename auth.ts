@@ -15,8 +15,32 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
+// Extend PrismaAdapter to auto-generate username for OAuth users
+const customAdapter = {
+  ...PrismaAdapter(prisma),
+  async createUser(data: any) {
+    // Generate username from email if not provided (for OAuth users)
+    if (!data.username && data.email) {
+      const baseUsername = data.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      let username = baseUsername;
+      let counter = 1;
+
+      // Check if username exists, add number suffix if needed
+      while (await prisma.user.findUnique({ where: { username } })) {
+        username = `${baseUsername}${counter}`;
+        counter++;
+      }
+
+      data.username = username;
+    }
+
+    // @ts-ignore - Prisma type mismatch
+    return await prisma.user.create({ data });
+  },
+};
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma) as any, // Type assertion for adapter compatibility
+  adapter: customAdapter as any, // Type assertion for adapter compatibility
 
   // Use JWT strategy instead of database sessions for better performance
   session: {
