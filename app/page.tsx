@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { auth } from '@/auth';
 import { Card, Button } from '@/components/ui';
 import { AnimatedBackground, PageContainer } from '@/components/layout';
 
@@ -7,8 +8,11 @@ import { AnimatedBackground, PageContainer } from '@/components/layout';
  *
  * Public-facing homepage showcasing the Axon Overclocking brain training app.
  * Features hero section, benefits, how it works, and call-to-action buttons.
+ * Shows different CTAs based on authentication status.
  */
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth();
+
   return (
     <div className="min-h-screen relative">
       {/* Animated Background Blobs */}
@@ -29,19 +33,34 @@ export default function HomePage() {
             focus, and cognitive performance. Challenge yourself daily and unlock your brain&apos;s full potential.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link href="/register">
-              <Button variant="primary" size="lg" className="w-full sm:w-auto min-w-[200px]">
-                Get Started
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button variant="secondary" size="lg" className="w-full sm:w-auto min-w-[200px]">
-                Sign In
-              </Button>
-            </Link>
-          </div>
+          {/* CTA Buttons - Different based on auth status */}
+          {session ? (
+            // Signed in - Show Dashboard button
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link href="/dashboard">
+                <Button variant="primary" size="lg" className="w-full sm:w-auto min-w-[200px]">
+                  Go to Dashboard
+                </Button>
+              </Link>
+              <p className="text-white/70 text-sm">
+                Welcome back, {session.user?.name || 'Trainer'}! 👋
+              </p>
+            </div>
+          ) : (
+            // Not signed in - Show Get Started / Sign In
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link href="/register">
+                <Button variant="primary" size="lg" className="w-full sm:w-auto min-w-[200px]">
+                  Get Started
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button variant="secondary" size="lg" className="w-full sm:w-auto min-w-[200px]">
+                  Sign In
+                </Button>
+              </Link>
+            </div>
+          )}
         </section>
 
         {/* Features Section */}
