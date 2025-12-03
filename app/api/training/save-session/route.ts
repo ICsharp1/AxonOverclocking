@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
           lastSessionAt: new Date(),
           currentDifficulty: body.configuration.difficulty
             ? { level: body.configuration.difficulty }
-            : currentProgress?.currentDifficulty,
+            : (currentProgress?.currentDifficulty || { level: 'medium' }),
         },
         create: {
           userId: session.user.id,
