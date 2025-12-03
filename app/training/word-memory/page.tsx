@@ -28,7 +28,7 @@ import { PageContainer } from '@/components/layout';
 
 // Type definitions
 type Phase = 'intro' | 'study' | 'recall' | 'results';
-type Difficulty = 'easy' | 'medium' | 'hard';
+type Difficulty = 'easy' | 'medium' | 'hard' | 'custom';
 
 interface Word {
   word: string;
@@ -68,6 +68,8 @@ export default function WordMemoryTraining() {
   // Core state
   const [phase, setPhase] = useState<Phase>('intro');
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
+  const [customWordCount, setCustomWordCount] = useState(20);
+  const [customTimeLimit, setCustomTimeLimit] = useState(60);
   const [words, setWords] = useState<Word[]>([]);
   const [recalledWords, setRecalledWords] = useState<string[]>([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -121,13 +123,39 @@ export default function WordMemoryTraining() {
     setError('');
 
     try {
-      const config = DIFFICULTIES.find((d) => d.level === difficulty)!;
+      // Get word count and time limit based on difficulty
+      let wordCount: number;
+      let timeLimit: number;
+      let difficultyLevel: 'easy' | 'medium' | 'hard';
+
+      if (difficulty === 'custom') {
+        // Validate custom settings
+        if (customWordCount < 5 || customWordCount > 50) {
+          setError('Word count must be between 5 and 50');
+          setIsLoading(false);
+          return;
+        }
+        if (customTimeLimit < 10 || customTimeLimit > 300) {
+          setError('Time limit must be between 10 and 300 seconds');
+          setIsLoading(false);
+          return;
+        }
+        wordCount = customWordCount;
+        timeLimit = customTimeLimit;
+        difficultyLevel = 'medium'; // Default for API
+      } else {
+        const config = DIFFICULTIES.find((d) => d.level === difficulty)!;
+        wordCount = config.words;
+        timeLimit = config.time;
+        difficultyLevel = difficulty;
+      }
+
       const response = await fetch('/api/content/words', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          count: config.words,
-          difficulty: difficulty,
+          count: wordCount,
+          difficulty: difficultyLevel,
         }),
       });
 
@@ -143,7 +171,7 @@ export default function WordMemoryTraining() {
 
       setWords(data.words);
       setPhase('study');
-      setTimeRemaining(config.time);
+      setTimeRemaining(timeLimit);
       setStudyStartTime(Date.now());
     } catch (err: any) {
       setError(err.message || 'Failed to start training. Please try again.');
@@ -347,7 +375,7 @@ export default function WordMemoryTraining() {
 
             <div className="mb-8">
               <h2 className="text-2xl font-semibold text-white mb-4">Select Difficulty</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {DIFFICULTIES.map((config) => (
                   <button
                     key={config.level}
@@ -376,7 +404,63 @@ export default function WordMemoryTraining() {
                     <p className="text-white/60 text-sm">{config.description}</p>
                   </button>
                 ))}
+
+                {/* Custom Difficulty Option */}
+                <button
+                  onClick={() => setDifficulty('custom')}
+                  className={`p-6 rounded-2xl transition-all duration-200 ${
+                    difficulty === 'custom'
+                      ? 'bg-purple-500/30 border-2 border-purple-400 scale-105'
+                      : 'bg-white/10 border-2 border-transparent hover:bg-white/20'
+                  }`}
+                >
+                  <Badge variant="info" className="mb-3">
+                    CUSTOM
+                  </Badge>
+                  <p className="text-white font-semibold text-lg mb-1">
+                    Your choice
+                  </p>
+                  <p className="text-white/60 text-sm">Personalize settings</p>
+                </button>
               </div>
+
+              {/* Custom Settings Inputs */}
+              {difficulty === 'custom' && (
+                <div className="mt-6 bg-white/5 border border-white/10 rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Custom Settings</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-white/80 text-sm mb-2">
+                        Number of Words (5-50)
+                      </label>
+                      <Input
+                        type="number"
+                        min="5"
+                        max="50"
+                        value={customWordCount}
+                        onChange={(e) => setCustomWordCount(parseInt(e.target.value) || 20)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-white/80 text-sm mb-2">
+                        Time Limit (10-300 seconds)
+                      </label>
+                      <Input
+                        type="number"
+                        min="10"
+                        max="300"
+                        value={customTimeLimit}
+                        onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 60)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-white/60 text-sm mt-3">
+                    💡 Tip: More words = harder challenge. Less time = more intense!
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="bg-white/5 rounded-xl p-6 mb-8">
