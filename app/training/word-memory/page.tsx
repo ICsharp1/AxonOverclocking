@@ -73,6 +73,8 @@ export default function WordMemoryTraining() {
   const [rouletteMode, setRouletteMode] = useState(false);
   const [rouletteAdvanceMode, setRouletteAdvanceMode] = useState<'timed' | 'manual'>('timed');
   const [rouletteTimePerWord, setRouletteTimePerWord] = useState(3);
+  const [rouletteHasTimeLimit, setRouletteHasTimeLimit] = useState(false);
+  const [rouletteOverallTimer, setRouletteOverallTimer] = useState(0);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [words, setWords] = useState<Word[]>([]);
   const [recalledWords, setRecalledWords] = useState<string[]>([]);
@@ -142,6 +144,24 @@ export default function WordMemoryTraining() {
       }
     }
   }, [phase, timeRemaining, rouletteMode, rouletteAdvanceMode, currentWordIndex, words.length, rouletteTimePerWord]);
+
+  // Overall time limit for roulette mode (optional)
+  useEffect(() => {
+    if (phase === 'study' && rouletteMode && rouletteHasTimeLimit && rouletteOverallTimer > 0) {
+      const timer = setInterval(() => {
+        setRouletteOverallTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setPhase('recall');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [phase, rouletteMode, rouletteHasTimeLimit, rouletteOverallTimer]);
 
   // Keyboard handler for roulette manual mode
   useEffect(() => {
@@ -227,8 +247,15 @@ export default function WordMemoryTraining() {
         } else {
           setTimeRemaining(0); // Manual mode doesn't use timer
         }
+        // Set overall time limit if enabled
+        if (rouletteHasTimeLimit) {
+          setRouletteOverallTimer(customTimeLimit);
+        } else {
+          setRouletteOverallTimer(0);
+        }
       } else {
         setTimeRemaining(timeLimit);
+        setRouletteOverallTimer(0);
       }
 
       setStudyStartTime(Date.now());
@@ -372,6 +399,8 @@ export default function WordMemoryTraining() {
     setResults(null);
     setError('');
     setTimeRemaining(60);
+    setCurrentWordIndex(0);
+    setRouletteOverallTimer(0);
   };
 
   /**
@@ -503,20 +532,21 @@ export default function WordMemoryTraining() {
                         className="w-full"
                       />
                     </div>
-                    <div>
-                      <label className="block text-white/80 text-sm mb-2">
-                        {rouletteMode ? 'Total Time Limit (10-300s)' : 'Time Limit (10-300 seconds)'}
-                      </label>
-                      <Input
-                        type="number"
-                        min="10"
-                        max="300"
-                        value={customTimeLimit}
-                        onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 60)}
-                        className="w-full"
-                        disabled={rouletteMode}
-                      />
-                    </div>
+                    {!rouletteMode && (
+                      <div>
+                        <label className="block text-white/80 text-sm mb-2">
+                          Time Limit (10-300 seconds)
+                        </label>
+                        <Input
+                          type="number"
+                          min="10"
+                          max="300"
+                          value={customTimeLimit}
+                          onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 60)}
+                          className="w-full"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Roulette Mode Toggle */}
@@ -592,10 +622,53 @@ export default function WordMemoryTraining() {
                             className="w-full"
                           />
                           <p className="text-white/50 text-xs mt-1">
-                            Total time: {customWordCount * rouletteTimePerWord}s
+                            {rouletteHasTimeLimit
+                              ? `Per word: ${rouletteTimePerWord}s | Overall limit: ${customTimeLimit}s`
+                              : `Total time: ${customWordCount * rouletteTimePerWord}s`
+                            }
                           </p>
                         </div>
                       )}
+
+                      {/* Overall Time Limit Toggle */}
+                      <div className="border-t border-purple-400/20 pt-3">
+                        <label className="flex items-center gap-3 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={rouletteHasTimeLimit}
+                            onChange={(e) => setRouletteHasTimeLimit(e.target.checked)}
+                            className="w-4 h-4 rounded bg-white/10 border-2 border-white/30 checked:bg-purple-500 checked:border-purple-500 cursor-pointer transition-colors"
+                          />
+                          <div className="flex-1">
+                            <span className="text-white/90 font-medium group-hover:text-purple-300 transition-colors">
+                              ⏱️ Add Overall Time Limit
+                            </span>
+                            <p className="text-white/50 text-xs">
+                              End study phase if time runs out before all words shown
+                            </p>
+                          </div>
+                        </label>
+
+                        {/* Time Limit Input */}
+                        {rouletteHasTimeLimit && (
+                          <div className="mt-3">
+                            <label className="block text-white/80 text-sm mb-2">
+                              Overall Time Limit (10-300 seconds)
+                            </label>
+                            <Input
+                              type="number"
+                              min="10"
+                              max="300"
+                              value={customTimeLimit}
+                              onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 60)}
+                              className="w-full"
+                            />
+                            <p className="text-white/50 text-xs mt-1">
+                              You have {customTimeLimit}s to see as many words as possible
+                            </p>
+                          </div>
+                        )}
+                      </div>
 
                       <p className="text-yellow-300 text-sm flex items-start gap-2">
                         <span>⚠️</span>
@@ -704,7 +777,7 @@ export default function WordMemoryTraining() {
             <div className="min-h-[500px] flex flex-col items-center justify-center">
               {/* Progress indicator */}
               <div className="mb-8 text-center">
-                <div className="flex items-center gap-3 justify-center mb-4">
+                <div className="flex items-center gap-3 justify-center mb-4 flex-wrap">
                   <span className="text-purple-300 font-bold text-lg">🎰 ROULETTE MODE</span>
                   {rouletteAdvanceMode === 'timed' && (
                     <Timer
@@ -712,6 +785,22 @@ export default function WordMemoryTraining() {
                       onComplete={() => {}}
                       variant="danger"
                     />
+                  )}
+                  {rouletteHasTimeLimit && rouletteOverallTimer > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-white/60 text-sm">Overall:</span>
+                      <Timer
+                        seconds={rouletteOverallTimer}
+                        onComplete={() => {}}
+                        variant={
+                          rouletteOverallTimer > customTimeLimit * 0.5
+                            ? 'default'
+                            : rouletteOverallTimer > customTimeLimit * 0.2
+                            ? 'warning'
+                            : 'danger'
+                        }
+                      />
+                    </div>
                   )}
                 </div>
                 <p className="text-white/70 text-lg">
