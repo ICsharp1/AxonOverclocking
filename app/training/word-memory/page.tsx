@@ -70,6 +70,10 @@ export default function WordMemoryTraining() {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [customWordCount, setCustomWordCount] = useState(20);
   const [customTimeLimit, setCustomTimeLimit] = useState(60);
+  const [rouletteMode, setRouletteMode] = useState(false);
+  const [rouletteAdvanceMode, setRouletteAdvanceMode] = useState<'timed' | 'manual'>('timed');
+  const [rouletteTimePerWord, setRouletteTimePerWord] = useState(3);
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [words, setWords] = useState<Word[]>([]);
   const [recalledWords, setRecalledWords] = useState<string[]>([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -96,23 +100,66 @@ export default function WordMemoryTraining() {
     }
   }, [phase]);
 
-  // Timer countdown for study phase
+  // Timer countdown for study phase (regular and roulette timed mode)
   useEffect(() => {
-    if (phase === 'study' && timeRemaining > 0) {
-      const timer = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            setPhase('recall');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (phase === 'study') {
+      // Regular mode
+      if (!rouletteMode && timeRemaining > 0) {
+        const timer = setInterval(() => {
+          setTimeRemaining((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              setPhase('recall');
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
 
-      return () => clearInterval(timer);
+        return () => clearInterval(timer);
+      }
+
+      // Roulette timed mode
+      if (rouletteMode && rouletteAdvanceMode === 'timed' && timeRemaining > 0) {
+        const timer = setInterval(() => {
+          setTimeRemaining((prev) => {
+            if (prev <= 1) {
+              // Move to next word or finish
+              if (currentWordIndex < words.length - 1) {
+                setCurrentWordIndex((idx) => idx + 1);
+                return rouletteTimePerWord; // Reset timer for next word
+              } else {
+                clearInterval(timer);
+                setPhase('recall');
+                return 0;
+              }
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        return () => clearInterval(timer);
+      }
     }
-  }, [phase, timeRemaining]);
+  }, [phase, timeRemaining, rouletteMode, rouletteAdvanceMode, currentWordIndex, words.length, rouletteTimePerWord]);
+
+  // Keyboard handler for roulette manual mode
+  useEffect(() => {
+    if (phase === 'study' && rouletteMode && rouletteAdvanceMode === 'manual') {
+      const handleKeyPress = (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          if (currentWordIndex < words.length - 1) {
+            setCurrentWordIndex((idx) => idx + 1);
+          } else {
+            setPhase('recall');
+          }
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyPress);
+      return () => window.removeEventListener('keydown', handleKeyPress);
+    }
+  }, [phase, rouletteMode, rouletteAdvanceMode, currentWordIndex, words.length]);
 
   /**
    * Phase 1: Start Training
@@ -171,7 +218,19 @@ export default function WordMemoryTraining() {
 
       setWords(data.words);
       setPhase('study');
-      setTimeRemaining(timeLimit);
+      setCurrentWordIndex(0); // Reset for roulette mode
+
+      // Calculate time limit for roulette mode
+      if (difficulty === 'custom' && rouletteMode) {
+        if (rouletteAdvanceMode === 'timed') {
+          setTimeRemaining(rouletteTimePerWord); // Start with first word timer
+        } else {
+          setTimeRemaining(0); // Manual mode doesn't use timer
+        }
+      } else {
+        setTimeRemaining(timeLimit);
+      }
+
       setStudyStartTime(Date.now());
     } catch (err: any) {
       setError(err.message || 'Failed to start training. Please try again.');
@@ -426,8 +485,10 @@ export default function WordMemoryTraining() {
 
               {/* Custom Settings Inputs */}
               {difficulty === 'custom' && (
-                <div className="mt-6 bg-white/5 border border-white/10 rounded-xl p-6">
+                <div className="mt-6 bg-white/5 border border-white/10 rounded-xl p-6 space-y-6">
                   <h3 className="text-lg font-semibold text-white mb-4">Custom Settings</h3>
+
+                  {/* Basic Settings */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-white/80 text-sm mb-2">
@@ -444,7 +505,7 @@ export default function WordMemoryTraining() {
                     </div>
                     <div>
                       <label className="block text-white/80 text-sm mb-2">
-                        Time Limit (10-300 seconds)
+                        {rouletteMode ? 'Total Time Limit (10-300s)' : 'Time Limit (10-300 seconds)'}
                       </label>
                       <Input
                         type="number"
@@ -453,11 +514,98 @@ export default function WordMemoryTraining() {
                         value={customTimeLimit}
                         onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 60)}
                         className="w-full"
+                        disabled={rouletteMode}
                       />
                     </div>
                   </div>
-                  <p className="text-white/60 text-sm mt-3">
-                    💡 Tip: More words = harder challenge. Less time = more intense!
+
+                  {/* Roulette Mode Toggle */}
+                  <div className="border-t border-white/10 pt-4">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={rouletteMode}
+                        onChange={(e) => setRouletteMode(e.target.checked)}
+                        className="w-5 h-5 rounded bg-white/10 border-2 border-white/30 checked:bg-purple-500 checked:border-purple-500 cursor-pointer transition-colors"
+                      />
+                      <div>
+                        <span className="text-white font-semibold group-hover:text-purple-300 transition-colors">
+                          🎰 Roulette Mode (Hardcore)
+                        </span>
+                        <p className="text-white/60 text-sm">
+                          Words flash one at a time. No going back!
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Roulette Settings */}
+                  {rouletteMode && (
+                    <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 space-y-4">
+                      <h4 className="text-white font-semibold flex items-center gap-2">
+                        <span>⚡</span> Roulette Settings
+                      </h4>
+
+                      {/* Advance Mode */}
+                      <div>
+                        <label className="block text-white/80 text-sm mb-2">
+                          Word Advance Mode
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            onClick={() => setRouletteAdvanceMode('timed')}
+                            className={`p-3 rounded-lg transition-all ${
+                              rouletteAdvanceMode === 'timed'
+                                ? 'bg-purple-500/40 border-2 border-purple-400'
+                                : 'bg-white/10 border-2 border-transparent hover:bg-white/20'
+                            }`}
+                          >
+                            <div className="text-white font-semibold">⏱️ Timed</div>
+                            <div className="text-white/60 text-xs">Auto-advance</div>
+                          </button>
+                          <button
+                            onClick={() => setRouletteAdvanceMode('manual')}
+                            className={`p-3 rounded-lg transition-all ${
+                              rouletteAdvanceMode === 'manual'
+                                ? 'bg-purple-500/40 border-2 border-purple-400'
+                                : 'bg-white/10 border-2 border-transparent hover:bg-white/20'
+                            }`}
+                          >
+                            <div className="text-white font-semibold">⏎ Manual</div>
+                            <div className="text-white/60 text-xs">Press Enter</div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Time per word (only for timed mode) */}
+                      {rouletteAdvanceMode === 'timed' && (
+                        <div>
+                          <label className="block text-white/80 text-sm mb-2">
+                            Seconds per Word (1-10)
+                          </label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={rouletteTimePerWord}
+                            onChange={(e) => setRouletteTimePerWord(parseInt(e.target.value) || 3)}
+                            className="w-full"
+                          />
+                          <p className="text-white/50 text-xs mt-1">
+                            Total time: {customWordCount * rouletteTimePerWord}s
+                          </p>
+                        </div>
+                      )}
+
+                      <p className="text-yellow-300 text-sm flex items-start gap-2">
+                        <span>⚠️</span>
+                        <span>Roulette mode is intense! You can't go back or skip words.</span>
+                      </p>
+                    </div>
+                  )}
+
+                  <p className="text-white/60 text-sm">
+                    💡 Tip: {rouletteMode ? 'Roulette mode tests your rapid encoding ability!' : 'More words = harder challenge. Less time = more intense!'}
                   </p>
                 </div>
               )}
@@ -517,34 +665,91 @@ export default function WordMemoryTraining() {
       {/* Phase 2: Study */}
       {phase === 'study' && (
         <Card blur="lg" className="p-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-            <h2 className="text-3xl font-bold text-white">Study These Words</h2>
-            <Timer
-              seconds={timeRemaining}
-              onComplete={() => setPhase('recall')}
-              variant={getTimerVariant(timeRemaining)}
-            />
-          </div>
-
-          <p className="text-white/70 mb-6 text-lg">
-            Memorize as many words as you can. The timer will automatically advance when it
-            reaches zero.
-          </p>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
-            {words.map((word, index) => (
-              <div
-                key={index}
-                className="bg-white/10 backdrop-blur-sm p-4 md:p-6 rounded-xl text-center hover:bg-white/20 transition-colors"
-              >
-                <p className="text-white text-base md:text-lg font-semibold">{word.word}</p>
+          {/* Regular Mode - Show all words */}
+          {!rouletteMode && (
+            <>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                <h2 className="text-3xl font-bold text-white">Study These Words</h2>
+                <Timer
+                  seconds={timeRemaining}
+                  onComplete={() => setPhase('recall')}
+                  variant={getTimerVariant(timeRemaining)}
+                />
               </div>
-            ))}
-          </div>
 
-          <Button variant="secondary" onClick={() => setPhase('recall')}>
-            Skip to Recall
-          </Button>
+              <p className="text-white/70 mb-6 text-lg">
+                Memorize as many words as you can. The timer will automatically advance when it
+                reaches zero.
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
+                {words.map((word, index) => (
+                  <div
+                    key={index}
+                    className="bg-white/10 backdrop-blur-sm p-4 md:p-6 rounded-xl text-center hover:bg-white/20 transition-colors"
+                  >
+                    <p className="text-white text-base md:text-lg font-semibold">{word.word}</p>
+                  </div>
+                ))}
+              </div>
+
+              <Button variant="secondary" onClick={() => setPhase('recall')}>
+                Skip to Recall
+              </Button>
+            </>
+          )}
+
+          {/* Roulette Mode - Show one word at a time */}
+          {rouletteMode && (
+            <div className="min-h-[500px] flex flex-col items-center justify-center">
+              {/* Progress indicator */}
+              <div className="mb-8 text-center">
+                <div className="flex items-center gap-3 justify-center mb-4">
+                  <span className="text-purple-300 font-bold text-lg">🎰 ROULETTE MODE</span>
+                  {rouletteAdvanceMode === 'timed' && (
+                    <Timer
+                      seconds={timeRemaining}
+                      onComplete={() => {}}
+                      variant="danger"
+                    />
+                  )}
+                </div>
+                <p className="text-white/70 text-lg">
+                  Word {currentWordIndex + 1} of {words.length}
+                </p>
+                <div className="mt-2 w-full max-w-md mx-auto bg-white/10 rounded-full h-2">
+                  <div
+                    className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${((currentWordIndex + 1) / words.length) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Current word - Large and centered */}
+              <div className="bg-gradient-to-br from-purple-500/30 to-indigo-500/30 border-4 border-purple-400/50 p-12 md:p-20 rounded-3xl mb-8 animate-[scaleIn_0.3s_ease-out]">
+                <p className="text-white text-5xl md:text-7xl lg:text-8xl font-bold text-center">
+                  {words[currentWordIndex]?.word}
+                </p>
+              </div>
+
+              {/* Instructions */}
+              <p className="text-white/60 text-center max-w-md">
+                {rouletteAdvanceMode === 'timed'
+                  ? 'Memorize it fast! Next word in ' + timeRemaining + 's...'
+                  : 'Press Enter to see the next word'}
+              </p>
+
+              {/* Manual mode hint */}
+              {rouletteAdvanceMode === 'manual' && (
+                <div className="mt-6 bg-white/5 border border-white/20 rounded-xl px-6 py-3">
+                  <p className="text-white/80 text-sm flex items-center gap-2">
+                    <kbd className="bg-white/20 px-3 py-1 rounded font-mono text-white">Enter</kbd>
+                    <span>to continue</span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       )}
 
