@@ -73,7 +73,7 @@ export default function WordMemoryTraining() {
   const [rouletteMode, setRouletteMode] = useState(false);
   const [rouletteAdvanceMode, setRouletteAdvanceMode] = useState<'timed' | 'manual'>('timed');
   const [rouletteTimePerWord, setRouletteTimePerWord] = useState(3);
-  const [rouletteHasTimeLimit, setRouletteHasTimeLimit] = useState(false);
+  const [rouletteHasTimeLimit, setRouletteHasTimeLimit] = useState(true);
   const [rouletteOverallTimer, setRouletteOverallTimer] = useState(0);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [words, setWords] = useState<Word[]>([]);
@@ -532,21 +532,25 @@ export default function WordMemoryTraining() {
                         className="w-full"
                       />
                     </div>
-                    {!rouletteMode && (
-                      <div>
-                        <label className="block text-white/80 text-sm mb-2">
-                          Time Limit (10-300 seconds)
-                        </label>
-                        <Input
-                          type="number"
-                          min="10"
-                          max="300"
-                          value={customTimeLimit}
-                          onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 60)}
-                          className="w-full"
-                        />
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-white/80 text-sm mb-2">
+                        Time Limit (10-300 seconds)
+                      </label>
+                      <Input
+                        type="number"
+                        min="10"
+                        max="300"
+                        value={customTimeLimit}
+                        onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 60)}
+                        className="w-full"
+                        disabled={rouletteMode && !rouletteHasTimeLimit}
+                      />
+                      {rouletteMode && !rouletteHasTimeLimit && (
+                        <p className="text-white/50 text-xs mt-1">
+                          Time limit disabled for unlimited roulette mode
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Roulette Mode Toggle */}
@@ -624,50 +628,30 @@ export default function WordMemoryTraining() {
                           <p className="text-white/50 text-xs mt-1">
                             {rouletteHasTimeLimit
                               ? `Per word: ${rouletteTimePerWord}s | Overall limit: ${customTimeLimit}s`
-                              : `Total time: ${customWordCount * rouletteTimePerWord}s`
+                              : `Unlimited mode - no overall time cap`
                             }
                           </p>
                         </div>
                       )}
 
-                      {/* Overall Time Limit Toggle */}
+                      {/* Disable Time Limit Toggle */}
                       <div className="border-t border-purple-400/20 pt-3">
                         <label className="flex items-center gap-3 cursor-pointer group">
                           <input
                             type="checkbox"
-                            checked={rouletteHasTimeLimit}
-                            onChange={(e) => setRouletteHasTimeLimit(e.target.checked)}
+                            checked={!rouletteHasTimeLimit}
+                            onChange={(e) => setRouletteHasTimeLimit(!e.target.checked)}
                             className="w-4 h-4 rounded bg-white/10 border-2 border-white/30 checked:bg-purple-500 checked:border-purple-500 cursor-pointer transition-colors"
                           />
                           <div className="flex-1">
                             <span className="text-white/90 font-medium group-hover:text-purple-300 transition-colors">
-                              ⏱️ Add Overall Time Limit
+                              ♾️ Disable Time Limit
                             </span>
                             <p className="text-white/50 text-xs">
-                              End study phase if time runs out before all words shown
+                              Keep going until all words are shown (unlimited mode)
                             </p>
                           </div>
                         </label>
-
-                        {/* Time Limit Input */}
-                        {rouletteHasTimeLimit && (
-                          <div className="mt-3">
-                            <label className="block text-white/80 text-sm mb-2">
-                              Overall Time Limit (10-300 seconds)
-                            </label>
-                            <Input
-                              type="number"
-                              min="10"
-                              max="300"
-                              value={customTimeLimit}
-                              onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 60)}
-                              className="w-full"
-                            />
-                            <p className="text-white/50 text-xs mt-1">
-                              You have {customTimeLimit}s to see as many words as possible
-                            </p>
-                          </div>
-                        )}
                       </div>
 
                       <p className="text-yellow-300 text-sm flex items-start gap-2">
