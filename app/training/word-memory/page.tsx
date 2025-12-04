@@ -89,6 +89,7 @@ export default function WordMemoryTraining() {
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [studyStartTime, setStudyStartTime] = useState<number>(0);
+  const [isPageVisible, setIsPageVisible] = useState(true);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -96,6 +97,19 @@ export default function WordMemoryTraining() {
       router.push('/login');
     }
   }, [status, router]);
+
+  // Pause timer when user switches tabs/windows (e.g., to check translations)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageVisible(!document.hidden);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Auto-focus input in recall phase
   useEffect(() => {
@@ -106,7 +120,7 @@ export default function WordMemoryTraining() {
 
   // Timer countdown for study phase (regular and roulette timed mode)
   useEffect(() => {
-    if (phase === 'study') {
+    if (phase === 'study' && isPageVisible) {
       // Regular mode
       if (!rouletteMode && timeRemaining > 0) {
         const timer = setInterval(() => {
@@ -145,11 +159,11 @@ export default function WordMemoryTraining() {
         return () => clearInterval(timer);
       }
     }
-  }, [phase, timeRemaining, rouletteMode, rouletteAdvanceMode, currentWordIndex, words.length, rouletteTimePerWord]);
+  }, [phase, timeRemaining, rouletteMode, rouletteAdvanceMode, currentWordIndex, words.length, rouletteTimePerWord, isPageVisible]);
 
   // Overall time limit for roulette mode (optional)
   useEffect(() => {
-    if (phase === 'study' && rouletteMode && rouletteHasTimeLimit && rouletteOverallTimer > 0) {
+    if (phase === 'study' && rouletteMode && rouletteHasTimeLimit && rouletteOverallTimer > 0 && isPageVisible) {
       const timer = setInterval(() => {
         setRouletteOverallTimer((prev) => {
           if (prev <= 1) {
@@ -163,7 +177,7 @@ export default function WordMemoryTraining() {
 
       return () => clearInterval(timer);
     }
-  }, [phase, rouletteMode, rouletteHasTimeLimit, rouletteOverallTimer]);
+  }, [phase, rouletteMode, rouletteHasTimeLimit, rouletteOverallTimer, isPageVisible]);
 
   // Keyboard handler for roulette manual mode
   useEffect(() => {
