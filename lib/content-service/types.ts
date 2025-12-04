@@ -27,7 +27,7 @@ export enum ContentType {
 /**
  * Difficulty levels for content selection
  */
-export type DifficultyLevel = 'easy' | 'medium' | 'hard';
+export type DifficultyLevel = 'easy' | 'normal' | 'medium' | 'hard';
 
 /**
  * Options for fetching words

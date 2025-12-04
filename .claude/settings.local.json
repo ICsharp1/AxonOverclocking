@@ -22,7 +22,11 @@
       "Bash(npm uninstall:*)",
       "Bash(npx tsc:*)",
       "Bash(npm run build:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell \"Stop-Process -Id 37572 -Force\")",
+      "Bash(Overall limit: 100s\"\n  - Clear explanation: \"End study phase if time runs out before all words shown\"\n- State management:\n  - New rouletteHasTimeLimit boolean flag\n  - New rouletteOverallTimer countdown tracker\n  - Proper reset in resetTraining function\n\nExample Use Case:\n- 50 words, 3 seconds per word = 150s total\n- But with 100s overall limit → only see ~33 words\n- Creates urgency and tests rapid encoding ability\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

@@ -28,7 +28,7 @@ import { PageContainer } from '@/components/layout';
 
 // Type definitions
 type Phase = 'intro' | 'study' | 'recall' | 'results';
-type Difficulty = 'easy' | 'medium' | 'hard' | 'custom';
+type Difficulty = 'easy' | 'normal' | 'medium' | 'hard' | 'custom';
 
 interface Word {
   word: string;
@@ -56,6 +56,7 @@ interface DifficultyConfig {
 // Difficulty configurations
 const DIFFICULTIES: DifficultyConfig[] = [
   { level: 'easy', words: 15, time: 75, description: 'Beginner friendly' },
+  { level: 'normal', words: 18, time: 65, description: 'Casual practice' },
   { level: 'medium', words: 20, time: 60, description: 'Standard challenge' },
   { level: 'hard', words: 25, time: 45, description: 'Expert mode' },
 ];
@@ -70,6 +71,7 @@ export default function WordMemoryTraining() {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [customWordCount, setCustomWordCount] = useState(20);
   const [customTimeLimit, setCustomTimeLimit] = useState(60);
+  const [customDifficulty, setCustomDifficulty] = useState<'easy' | 'normal' | 'medium' | 'hard'>('medium');
   const [rouletteMode, setRouletteMode] = useState(false);
   const [rouletteAdvanceMode, setRouletteAdvanceMode] = useState<'timed' | 'manual'>('timed');
   const [rouletteTimePerWord, setRouletteTimePerWord] = useState(3);
@@ -193,7 +195,7 @@ export default function WordMemoryTraining() {
       // Get word count and time limit based on difficulty
       let wordCount: number;
       let timeLimit: number;
-      let difficultyLevel: 'easy' | 'medium' | 'hard';
+      let difficultyLevel: 'easy' | 'normal' | 'medium' | 'hard';
 
       if (difficulty === 'custom') {
         // Validate custom settings
@@ -209,7 +211,7 @@ export default function WordMemoryTraining() {
         }
         wordCount = customWordCount;
         timeLimit = customTimeLimit;
-        difficultyLevel = 'medium'; // Default for API
+        difficultyLevel = customDifficulty; // Use custom difficulty selection
       } else {
         const config = DIFFICULTIES.find((d) => d.level === difficulty)!;
         wordCount = config.words;
@@ -463,7 +465,7 @@ export default function WordMemoryTraining() {
 
             <div className="mb-8">
               <h2 className="text-2xl font-semibold text-white mb-4">Select Difficulty</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 {DIFFICULTIES.map((config) => (
                   <button
                     key={config.level}
@@ -478,6 +480,8 @@ export default function WordMemoryTraining() {
                       variant={
                         config.level === 'easy'
                           ? 'success'
+                          : config.level === 'normal'
+                          ? 'info'
                           : config.level === 'medium'
                           ? 'warning'
                           : 'error'
@@ -518,38 +522,66 @@ export default function WordMemoryTraining() {
                   <h3 className="text-lg font-semibold text-white mb-4">Custom Settings</h3>
 
                   {/* Basic Settings */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    {/* Word Difficulty Selector */}
                     <div>
                       <label className="block text-white/80 text-sm mb-2">
-                        Number of Words (5-50)
+                        Word Difficulty Level
                       </label>
-                      <Input
-                        type="number"
-                        min="5"
-                        max="50"
-                        value={customWordCount}
-                        onChange={(e) => setCustomWordCount(parseInt(e.target.value) || 20)}
-                        className="w-full"
-                      />
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {(['easy', 'normal', 'medium', 'hard'] as const).map((level) => (
+                          <button
+                            key={level}
+                            onClick={() => setCustomDifficulty(level)}
+                            className={`p-3 rounded-lg transition-all ${
+                              customDifficulty === level
+                                ? 'bg-purple-500/40 border-2 border-purple-400'
+                                : 'bg-white/10 border-2 border-transparent hover:bg-white/20'
+                            }`}
+                          >
+                            <div className="text-white font-semibold capitalize">{level}</div>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-white/50 text-xs mt-1">
+                        Controls word complexity: easy (cat, dog), normal (butterfly), medium (squirrel), hard (photosynthesis)
+                      </p>
                     </div>
-                    <div>
-                      <label className="block text-white/80 text-sm mb-2">
-                        Time Limit (10-300 seconds)
-                      </label>
-                      <Input
-                        type="number"
-                        min="10"
-                        max="300"
-                        value={customTimeLimit}
-                        onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 60)}
-                        className="w-full"
-                        disabled={rouletteMode && !rouletteHasTimeLimit}
-                      />
-                      {rouletteMode && !rouletteHasTimeLimit && (
-                        <p className="text-white/50 text-xs mt-1">
-                          Time limit disabled for unlimited roulette mode
-                        </p>
-                      )}
+
+                    {/* Word Count and Time Limit */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-white/80 text-sm mb-2">
+                          Number of Words (5-50)
+                        </label>
+                        <Input
+                          type="number"
+                          min="5"
+                          max="50"
+                          value={customWordCount}
+                          onChange={(e) => setCustomWordCount(parseInt(e.target.value) || 20)}
+                          className="w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-white/80 text-sm mb-2">
+                          Time Limit (10-300 seconds)
+                        </label>
+                        <Input
+                          type="number"
+                          min="10"
+                          max="300"
+                          value={customTimeLimit}
+                          onChange={(e) => setCustomTimeLimit(parseInt(e.target.value) || 60)}
+                          className="w-full"
+                          disabled={rouletteMode && !rouletteHasTimeLimit}
+                        />
+                        {rouletteMode && !rouletteHasTimeLimit && (
+                          <p className="text-white/50 text-xs mt-1">
+                            Time limit disabled for unlimited roulette mode
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 

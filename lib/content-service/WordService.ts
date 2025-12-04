@@ -167,6 +167,7 @@ export class WordService implements IContentService<Word> {
     // Map difficulty to filename
     const fileMap: Record<DifficultyLevel, string> = {
       easy: 'common.json',
+      normal: 'normal.json',
       medium: 'uncommon.json',
       hard: 'rare.json',
     };
@@ -336,8 +337,8 @@ export class WordService implements IContentService<Word> {
       throw new Error('Word count must be greater than 0');
     }
 
-    if (!['easy', 'medium', 'hard'].includes(difficulty)) {
-      throw new Error(`Invalid difficulty: ${difficulty}. Must be 'easy', 'medium', or 'hard'`);
+    if (!['easy', 'normal', 'medium', 'hard'].includes(difficulty)) {
+      throw new Error(`Invalid difficulty: ${difficulty}. Must be 'easy', 'normal', 'medium', or 'hard'`);
     }
 
     if (!userId || userId.trim() === '') {
